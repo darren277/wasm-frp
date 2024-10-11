@@ -1,0 +1,8 @@
+mydata/
+target/
+
+backend/static/pkg/
+
+*OLD.rs
+*TMP.rs
+db.rs
