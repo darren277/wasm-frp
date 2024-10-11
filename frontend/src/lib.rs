@@ -2,6 +2,8 @@ use serde::Deserialize;
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::format::{Json, Nothing};
+use anyhow;
+use wasm_bindgen::prelude::*;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Data {
@@ -9,16 +11,12 @@ pub struct Data {
     message: String,
 }
 
-struct Model {
-    link: ComponentLink<Self>,
-    value: i64,
-}
-
 pub struct Model {
     fetch_task: Option<FetchTask>, // Task handle for the request
     data: Option<Data>, // Loaded data
     link: ComponentLink<Self>,
     error: Option<String>, // Error info
+    value: i64,
 }
 
 pub enum Msg {
@@ -37,13 +35,14 @@ impl Component for Model {
             data: None, 
             link, 
             error: None,
+            value: todo!(),
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::FetchData => {
-                let request = Request::get("http://localhost:3000/data_endpoint")
+                let request = Request::get("http://localhost:3007/data_endpoint")
                     .body(Nothing)
                     .expect("Could not build request.");
                 let callback = self.link.callback(
@@ -75,6 +74,10 @@ impl Component for Model {
             </>
         }
     }
+    
+    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
+        todo!()
+    }
 }
 
 impl Model {
@@ -96,5 +99,11 @@ impl Model {
 }
 
 fn main() {
+    println!("This is a simple binary for the frontend.");
     yew::start_app::<Model>();
+}
+
+#[wasm_bindgen]
+pub fn your_exported_function() -> String {
+    "Hello from WebAssembly!".to_string()
 }

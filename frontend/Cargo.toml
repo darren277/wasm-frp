@@ -1,5 +1,5 @@
 [package]
-name = "your_project_frontend"
+name = "wasm_frp_frontend"
 version = "0.1.0"
 edition = "2018"
 
@@ -7,14 +7,17 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-wasm-bindgen = "0.2"
+wasm-bindgen = "0.2.95"
 yew = "0.18"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0.89"
 
 # Optional: for using web_sys features directly
 web-sys = { version = "0.3", features = ['console'] }
 
 # Shared library
-your_project_shared = { path = "../shared" }
+#your_project_shared = { path = "../shared" }
 
-[features]
-default = ["console_error_panic_hook"]
+#[features]
+#default = ["console_error_panic_hook"]

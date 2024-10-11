@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebAssembly Demo</title>
+</head>
+<body>
+    <h1>WebAssembly Demo</h1>
+    <p id="output"></p>
+
+    <script type="module">
+        import init, { your_exported_function } from './pkg/wasm_frp_frontend.js';
+
+        async function initWasm() {
+            try {
+                await init();
+
+                const result = your_exported_function();
+                document.getElementById('output').textContent = `WASM says: ${result}`;
+            } catch (err) {
+                console.error('Failed to load WebAssembly:', err);
+                document.getElementById('output').textContent = 'Error loading WebAssembly!';
+            }
+        }
+        
+        initWasm();
+    </script>
+</body>
+</html>
