@@ -1,17 +1,36 @@
 version: '3.8'
 services:
+  surrealdb:
+    image: surrealdb/surrealdb:latest
+    #command: start rocksdb:/mydata/mydatabase.db
+    #command: start memory --user $SURREALDB_USER --pass $SURREALDB_PASS
+    command: start memory --user root --pass root
+    #command: start --help
+    ports:
+      - "8008:8000"
+    environment:
+      - SURREALDB_USER=root
+      - SURREALDB_PASS=root
+      - SURREALDB_DB=test
+    volumes:
+      - surrealdb-data:/var/lib/surrealdb
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3007:3007"
+    depends_on:
+        - surrealdb
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "80:80"
+      - "87:87"
     depends_on:
       - backend
+volumes:
+  surrealdb-data:
