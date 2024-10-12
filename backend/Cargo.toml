@@ -12,6 +12,8 @@ reqwest = { version = "0.11", features = ["json"] }
 pretty_env_logger = "0.4"
 http-body-util = "0.1"
 hyper-util = { version = "0.1", features = ["full"] }
+surrealdb = { version = "2.0.4", features = ["protocol-http", "protocol-ws"] }
+
 
 # If you use shared types or utilities
 #your_project_shared = { path = "../shared" }
