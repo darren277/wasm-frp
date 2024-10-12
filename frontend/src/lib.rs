@@ -4,24 +4,28 @@ use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::format::{Json, Nothing};
 use anyhow;
 use wasm_bindgen::prelude::*;
+use web_sys::console;
+
+// Macro to make logging easier
+macro_rules! log {
+    ($($t:tt)*) => (console::log_1(&wasm_bindgen::JsValue::from_str(&format!($($t)*))));
+}
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct Data {
-    // Define the data structure you expect from the backend
-    message: String,
+pub struct User {
+    name: String,
 }
 
 pub struct Model {
-    fetch_task: Option<FetchTask>, // Task handle for the request
-    data: Option<Data>, // Loaded data
+    fetch_task: Option<FetchTask>,
+    users: Option<Vec<User>>, // Expecting an array of users
     link: ComponentLink<Self>,
-    error: Option<String>, // Error info
-    value: i64,
+    error: Option<String>,
 }
 
 pub enum Msg {
     FetchData,
-    ReceiveResponse(Result<Data, anyhow::Error>),
+    ReceiveResponse(Result<Vec<User>, anyhow::Error>), // Expecting an array of users
 }
 
 impl Component for Model {
@@ -32,21 +36,20 @@ impl Component for Model {
         link.send_message(Msg::FetchData); // Automatically fetch data when the component is created
         Self { 
             fetch_task: None, 
-            data: None, 
+            users: None,  // Expect an array of users
             link, 
             error: None,
-            value: todo!(),
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::FetchData => {
-                let request = Request::get("http://localhost:3007/data_endpoint")
+                let request = Request::get("http://127.0.0.1:8080/api/data")
                     .body(Nothing)
                     .expect("Could not build request.");
                 let callback = self.link.callback(
-                    |response: Response<Json<Result<Data, anyhow::Error>>>| {
+                    |response: Response<Json<Result<Vec<User>, anyhow::Error>>>| {
                         let Json(data) = response.into_body();
                         Msg::ReceiveResponse(data)
                     },
@@ -57,10 +60,16 @@ impl Component for Model {
             }
             Msg::ReceiveResponse(response) => {
                 match response {
-                    Ok(data) => self.data = Some(data),
-                    Err(error) => self.error = Some(error.to_string()),
+                    Ok(users) => {
+                        log!("Users received: {:?}", users); // Log the data
+                        self.users = Some(users);
+                    }
+                    Err(error) => {
+                        log!("Error: {:?}", error);
+                        self.error = Some(error.to_string());
+                    }
                 }
-                self.fetch_task = None; // Clear the task now that the request is finished
+                self.fetch_task = None;
                 true
             }
         }
@@ -69,23 +78,27 @@ impl Component for Model {
     fn view(&self) -> Html {
         html! {
             <>
-                { self.view_data() }
+                { self.view_users() }
                 { self.view_error() }
             </>
         }
     }
-    
+
     fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        todo!()
+        false
     }
 }
 
 impl Model {
-    fn view_data(&self) -> Html {
-        if let Some(ref data) = self.data {
-            html! { <p>{ &data.message }</p> }
+    fn view_users(&self) -> Html {
+        if let Some(ref users) = self.users {
+            html! {
+                <ul>
+                    { for users.iter().map(|user| html! { <li>{ &user.name }</li> }) }
+                </ul>
+            }
         } else {
-            html! { <p>{ "No data yet..." }</p> }
+            html! { <p>{ "No users found..." }</p> }
         }
     }
 
@@ -98,12 +111,8 @@ impl Model {
     }
 }
 
-fn main() {
-    println!("This is a simple binary for the frontend.");
-    yew::start_app::<Model>();
-}
-
 #[wasm_bindgen]
-pub fn your_exported_function() -> String {
-    "Hello from WebAssembly!".to_string()
+pub fn your_exported_function() {
+    //"Hello from WebAssembly!".to_string()
+    yew::start_app::<Model>();
 }
