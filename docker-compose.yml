@@ -24,13 +24,5 @@ services:
     depends_on:
         - surrealdb
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "87:87"
-    depends_on:
-      - backend
 volumes:
   surrealdb-data:
