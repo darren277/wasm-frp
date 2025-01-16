@@ -28,7 +28,7 @@ pub enum Msg {
     ReceiveResponse(Result<Vec<User>, anyhow::Error>), // Expecting an array of users
 }
 
-const API_URL: &str = "http://127.0.0.1:8080/api/data";
+const API_URL: &str = "http://127.0.0.1:8080/api/users";
 
 impl Component for Model {
     type Message = Msg;
