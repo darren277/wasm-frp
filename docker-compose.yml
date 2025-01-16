@@ -1,6 +1,6 @@
 version: '3.8'
 services:
-  surrealdb:
+  wasmfrp-surrealdb:
     image: surrealdb/surrealdb:latest
     #command: start rocksdb:/mydata/mydatabase.db
     #command: start memory --user $SURREALDB_USER --pass $SURREALDB_PASS
@@ -22,7 +22,7 @@ services:
     ports:
       - "3007:3007"
     depends_on:
-        - surrealdb
+        - wasmfrp-surrealdb
 
 volumes:
   surrealdb-data:
