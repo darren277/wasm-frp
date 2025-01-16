@@ -3,10 +3,10 @@ WORKDIR /usr/src/myapp
 
 COPY ./src ./src
 COPY ./Cargo.toml ./Cargo.toml
-COPY ./static ./static
 
 RUN cargo install --path .
 
+COPY ./static ./static
 
 FROM rust:1.81 as runtime
 
