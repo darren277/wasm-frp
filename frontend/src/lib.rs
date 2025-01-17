@@ -28,6 +28,8 @@ pub enum Msg {
     ReceiveResponse(Result<Vec<User>, anyhow::Error>), // Expecting an array of users
 }
 
+const API_URL: &str = "http://127.0.0.1:8080/api/users";
+
 impl Component for Model {
     type Message = Msg;
     type Properties = ();
@@ -45,7 +47,7 @@ impl Component for Model {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::FetchData => {
-                let request = Request::get("http://127.0.0.1:8080/api/data")
+                let request = Request::get(API_URL)
                     .body(Nothing)
                     .expect("Could not build request.");
                 let callback = self.link.callback(

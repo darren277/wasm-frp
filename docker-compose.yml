@@ -1,6 +1,6 @@
 version: '3.8'
 services:
-  surrealdb:
+  wasmfrp-surrealdb:
     image: surrealdb/surrealdb:latest
     #command: start rocksdb:/mydata/mydatabase.db
     #command: start memory --user $SURREALDB_USER --pass $SURREALDB_PASS
@@ -20,9 +20,9 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "3007:3007"
+      - "8080:8080"
     depends_on:
-        - surrealdb
+        - wasmfrp-surrealdb
 
 volumes:
   surrealdb-data:

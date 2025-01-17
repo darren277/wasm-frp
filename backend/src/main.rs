@@ -15,6 +15,16 @@ use tokio::time::{timeout, Duration};
 use surrealdb::engine::any::connect;
 use surrealdb::opt::auth::Root;
 
+const SURREALDB_DOCKER_HOST: &str = "wasmfrp-surrealdb";
+const SURREALDB_INTERNAL_DOCKER_PORT: u16 = 8000;
+
+const SURREALDB_NS: &str = "test";
+const SURREALDB_DB: &str = "test";
+const SURREALDB_USER: &str = "root";
+const SURREALDB_PASS: &str = "root";
+
+const PORT: u16 = 8080;
+
 #[derive(Serialize, Deserialize, Debug)]
 struct User {
     name: String,
@@ -22,13 +32,10 @@ struct User {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
-
-    println!("Server running on 127.0.0.1:8080");
+    let addr = SocketAddr::from(([0, 0, 0, 0], PORT));
+    println!("Server running on http://{}", addr);
 
     let listener = TcpListener::bind(addr).await?;
-
-    println!("Serving on http://{}", addr);
 
     loop {
         let (stream, _) = listener.accept().await?;
@@ -100,9 +107,9 @@ fn get_mime_type(path: &str) -> &'static str {
 
 async fn api_handler(path: &str) -> Result<Response<Full<Bytes>>, Infallible> {
     match path {
-        "/api/data" => {
+        "/api/users" => {
             println!("Connecting to the database...");
-            let db = match connect("http://127.0.0.1:8008/rpc").await {
+            let db = match connect(format!("http://{}:{}/rpc", SURREALDB_DOCKER_HOST, SURREALDB_INTERNAL_DOCKER_PORT)).await {
                 Ok(db) => db,
                 Err(e) => {
                     eprintln!("Error connecting to the database: {:?}", e);
@@ -115,7 +122,7 @@ async fn api_handler(path: &str) -> Result<Response<Full<Bytes>>, Infallible> {
             };
             
             println!("Logging in to the database...");
-            let result = timeout(Duration::from_secs(5), db.signin(Root { username: "root", password: "root" })).await;
+            let result = timeout(Duration::from_secs(5), db.signin(Root { username: SURREALDB_USER, password: SURREALDB_PASS })).await;
 
             match result {
                 Ok(Ok(_)) => {
@@ -140,7 +147,7 @@ async fn api_handler(path: &str) -> Result<Response<Full<Bytes>>, Infallible> {
             }
             
             println!("Selecting namespace and database...");
-            if let Err(e) = db.use_ns("wasmfrp").use_db("sdb").await {
+            if let Err(e) = db.use_ns(SURREALDB_NS).use_db(SURREALDB_DB).await {
                 eprintln!("Error selecting namespace and database: {:?}", e);
                 return Ok(Response::builder()
                     .status(500)
@@ -150,7 +157,7 @@ async fn api_handler(path: &str) -> Result<Response<Full<Bytes>>, Infallible> {
             }
 
             println!("Fetching data from the database...");
-            let users: Vec<User> = match db.select("user").await {
+            let users: Vec<User> = match db.select("users").await {
                 Ok(users) => users,
                 Err(e) => {
                     eprintln!("Error fetching data from the database: {:?}", e);
