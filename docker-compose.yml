@@ -20,7 +20,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "3007:3007"
+      - "8080:8080"
     depends_on:
         - wasmfrp-surrealdb
 
