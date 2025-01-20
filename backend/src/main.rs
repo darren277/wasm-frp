@@ -3,6 +3,7 @@ use http_body_util::BodyExt;
 use hyper::server::conn::http1;
 use hyper::body::Bytes;
 use hyper::body::Incoming;
+use hyper::StatusCode;
 use hyper::{Method, Request, Response};
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
@@ -107,6 +108,121 @@ fn get_mime_type(path: &str) -> &'static str {
     } else {
         "text/plain"
     }
+}
+
+// ---------------------------
+// GET /api/users/<id>
+// ---------------------------
+pub async fn get_user_by_id(db: &Surreal<Http>, user_id: &str) -> Result<Response<Body>, SurrealErr> {
+    // 'users:{}'. Could also store ID differently
+    let record_id = format!("users:{}", user_id);
+
+    // SurrealDB returns an Option-like Vec (0 or 1) for select
+    let user: Option<User> = db.select(&record_id).await?;
+
+    match user {
+        Some(u) => {
+            let body = serde_json::to_string(&u).unwrap();
+            Ok(Response::builder()
+                .header("Content-Type", "application/json")
+                .body(Body::from(body))
+                .unwrap())
+        }
+        None => Ok(Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Body::from(r#"{"error":"User not found"}"#))
+            .unwrap()),
+    }
+}
+
+// ---------------------------
+// POST /api/users
+// ---------------------------
+pub async fn create_user(db: &Surreal<Http>, body_bytes: &[u8]) -> Result<Response<Body>, SurrealErr> {
+    // Convert request body (JSON) into a partial user struct
+    let user_in: User = serde_json::from_slice(body_bytes)
+        .map_err(|_| SurrealErr::Custom("Invalid JSON body".into()))?;
+
+    // Insert into SurrealDB; "users" can be a table or root-level
+    let record_id = "users"; 
+    let created: User = db.create(record_id).content(&user_in).await?;
+
+    let body = serde_json::to_string(&created).unwrap();
+    Ok(Response::builder()
+        .status(StatusCode::CREATED)
+        .header("Content-Type", "application/json")
+        .body(Body::from(body))
+        .unwrap())
+}
+
+// ---------------------------
+// PUT /api/users/<id>
+// ---------------------------
+pub async fn update_user(db: &Surreal<Http>, user_id: &str, body_bytes: &[u8]) -> Result<Response<Body>, SurrealErr> {
+    // Convert request body (JSON) into partial user struct
+    let user_in: User = serde_json::from_slice(body_bytes)
+        .map_err(|_| SurrealErr::Custom("Invalid JSON body".into()))?;
+
+    let record_id = format!("users:{}", user_id);
+
+    // Update the record
+    let updated: Option<User> = db.update(&record_id).content(&user_in).await?;
+
+    match updated {
+        Some(u) => {
+            let body = serde_json::to_string(&u).unwrap();
+            Ok(Response::builder()
+                .header("Content-Type", "application/json")
+                .body(Body::from(body))
+                .unwrap())
+        }
+        None => {
+            // Surreal might return None if not found
+            Ok(Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Body::from(r#"{"error":"User not found"}"#))
+                .unwrap())
+        }
+    }
+}
+
+// ---------------------------
+// DELETE /api/users/<id>
+// ---------------------------
+pub async fn delete_user(db: &Surreal<Http>, user_id: &str) -> Result<Response<Body>, SurrealErr> {
+    let record_id = format!("users:{}", user_id);
+
+    let deleted: Option<User> = db.delete(&record_id).await?;
+
+    match deleted {
+        Some(_u) => {
+            Ok(Response::builder()
+                .status(StatusCode::NO_CONTENT) // Typically no body for DELETE
+                .body(Body::empty())
+                .unwrap())
+        }
+        None => {
+            Ok(Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Body::from(r#"{"error":"User not found"}"#))
+                .unwrap())
+        }
+    }
+}
+
+fn internal_server_error() -> Response<Full<Bytes>> {
+    Response::builder()
+        .status(StatusCode::INTERNAL_SERVER_ERROR)
+        .header("Content-Type", "application/json")
+        .body(Full::from(Bytes::from(r#"{"error":"Internal server error"}"#)))
+        .unwrap()
+}
+
+fn not_found() -> Response<Full<Bytes>> {
+    Response::builder()
+        .status(StatusCode::NOT_FOUND)
+        .body(Full::from(Bytes::from(r#"{"error":"Not found"}"#)))
+        .unwrap()
 }
 
 async fn db_connect() -> Result<Surreal<Any>, Response<Full<Bytes>>> {
@@ -219,6 +335,8 @@ pub async fn api_handler(req: Request<Incoming>) -> Result<Response<Full<Bytes>>
             )
         }
         (Method::POST, "/api/users") => {
+            // TODO: Abstract this...
+
             let body_stream = req.into_body();
 
             // Collect the entire body into a "Full" type:
@@ -273,12 +391,64 @@ pub async fn api_handler(req: Request<Incoming>) -> Result<Response<Full<Bytes>>
                 }
             }
         }
-        _ => {
-            Ok(Response::builder()
-                .status(404)
-                .body(Full::new(Bytes::from("404 - Not Found")))
-                .unwrap())
+        _ if path.starts_with("/api/users/") => {
+            let user_id = path.trim_start_matches("/api/users/"); // "123"
+            
+            match method {
+                Method::GET => {
+                    match get_user_by_id(&db, user_id).await {
+                        Ok(response) => Ok(response),
+                        Err(e) => {
+                            eprintln!("DB error: {:?}", e);
+                            Ok(internal_server_error())
+                        }
+                    }
+                }
+                Method::PUT => {
+                    let body_stream = req.into_body();
+
+                    // Collect the entire body into a "Full" type:
+                    let collected_body = match body_stream.collect().await {
+                        Ok(full) => full,
+                        Err(e) => {
+                            eprintln!("Error reading body: {e}");
+                            // return error response...
+                            return Ok(Response::builder()
+                                .status(500)
+                                .header("Content-Type", "application/json")
+                                .body(Full::new(Bytes::from(r#"{"error": "Failed to read body"}"#)))
+                                .unwrap());
+                        }
+                    };
+
+                    // Convert that to Bytes:
+                    let body: Bytes = collected_body.to_bytes();
+                    println!("Got body: {:?}", body);
+                    
+                    match update_user(&db, user_id, &body).await {
+                        Ok(response) => Ok(response),
+                        Err(e) => {
+                            eprintln!("DB error: {:?}", e);
+                            Ok(internal_server_error())
+                        }
+                    }
+                }
+                // -------------------------
+                // DELETE /api/users/<id>
+                // -------------------------
+                Method::DELETE => {
+                    match delete_user(&db, user_id).await {
+                        Ok(response) => Ok(response),
+                        Err(e) => {
+                            eprintln!("DB error: {:?}", e);
+                            Ok(internal_server_error())
+                        }
+                    }
+                }
+            }
         }
+        //Ok(Response::builder().status(404).body(Full::new(Bytes::from("404 - Not Found"))).unwrap())
+        _ => Ok(not_found())
     }
 }
 
