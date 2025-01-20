@@ -105,56 +105,62 @@ fn get_mime_type(path: &str) -> &'static str {
     }
 }
 
+async fn db_connect() -> _WHAT_IS_THIS_ {
+    println!("Connecting to the database...");
+    let db = match connect(format!("http://{}:{}/rpc", SURREALDB_DOCKER_HOST, SURREALDB_INTERNAL_DOCKER_PORT)).await {
+        Ok(db) => db,
+        Err(e) => {
+            eprintln!("Error connecting to the database: {:?}", e);
+            return Ok(Response::builder()
+                .status(500)
+                .header("Content-Type", "application/json")
+                .body(Full::new(Bytes::from(r#"{"error": "Failed to connect to database"}"#)))
+                .unwrap());
+        }
+    };
+    
+    println!("Logging in to the database...");
+    let result = timeout(Duration::from_secs(5), db.signin(Root { username: SURREALDB_USER, password: SURREALDB_PASS })).await;
+
+    match result {
+        Ok(Ok(_)) => {
+            println!("Login successful");
+        }
+        Ok(Err(e)) => {
+            eprintln!("Error signing into the database: {:?}", e);
+            return Ok(Response::builder()
+                .status(500)
+                .header("Content-Type", "application/json")
+                .body(Full::new(Bytes::from(r#"{"error": "Failed to sign in to database"}"#)))
+                .unwrap());
+        }
+        Err(_) => {
+            eprintln!("Database login timed out");
+            return Ok(Response::builder()
+                .status(500)
+                .header("Content-Type", "application/json")
+                .body(Full::new(Bytes::from(r#"{"error": "Database login timed out"}"#)))
+                .unwrap());
+        }
+    }
+    
+    println!("Selecting namespace and database...");
+    if let Err(e) = db.use_ns(SURREALDB_NS).use_db(SURREALDB_DB).await {
+        eprintln!("Error selecting namespace and database: {:?}", e);
+        return Ok(Response::builder()
+            .status(500)
+            .header("Content-Type", "application/json")
+            .body(Full::new(Bytes::from(r#"{"error": "Failed to select namespace and database"}"#)))
+            .unwrap());
+    }
+    
+    Ok(db)
+}
+
 async fn api_handler(path: &str) -> Result<Response<Full<Bytes>>, Infallible> {
     match path {
         "/api/users" => {
-            println!("Connecting to the database...");
-            let db = match connect(format!("http://{}:{}/rpc", SURREALDB_DOCKER_HOST, SURREALDB_INTERNAL_DOCKER_PORT)).await {
-                Ok(db) => db,
-                Err(e) => {
-                    eprintln!("Error connecting to the database: {:?}", e);
-                    return Ok(Response::builder()
-                        .status(500)
-                        .header("Content-Type", "application/json")
-                        .body(Full::new(Bytes::from(r#"{"error": "Failed to connect to database"}"#)))
-                        .unwrap());
-                }
-            };
-            
-            println!("Logging in to the database...");
-            let result = timeout(Duration::from_secs(5), db.signin(Root { username: SURREALDB_USER, password: SURREALDB_PASS })).await;
-
-            match result {
-                Ok(Ok(_)) => {
-                    println!("Login successful");
-                }
-                Ok(Err(e)) => {
-                    eprintln!("Error signing into the database: {:?}", e);
-                    return Ok(Response::builder()
-                        .status(500)
-                        .header("Content-Type", "application/json")
-                        .body(Full::new(Bytes::from(r#"{"error": "Failed to sign in to database"}"#)))
-                        .unwrap());
-                }
-                Err(_) => {
-                    eprintln!("Database login timed out");
-                    return Ok(Response::builder()
-                        .status(500)
-                        .header("Content-Type", "application/json")
-                        .body(Full::new(Bytes::from(r#"{"error": "Database login timed out"}"#)))
-                        .unwrap());
-                }
-            }
-            
-            println!("Selecting namespace and database...");
-            if let Err(e) = db.use_ns(SURREALDB_NS).use_db(SURREALDB_DB).await {
-                eprintln!("Error selecting namespace and database: {:?}", e);
-                return Ok(Response::builder()
-                    .status(500)
-                    .header("Content-Type", "application/json")
-                    .body(Full::new(Bytes::from(r#"{"error": "Failed to select namespace and database"}"#)))
-                    .unwrap());
-            }
+            let db = db_connect().await?;
 
             println!("Fetching data from the database...");
             let users: Vec<User> = match db.select("users").await {
