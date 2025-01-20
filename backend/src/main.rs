@@ -113,7 +113,7 @@ fn get_mime_type(path: &str) -> &'static str {
 // ---------------------------
 // GET /api/users/<id>
 // ---------------------------
-pub async fn get_user_by_id(db: &Surreal<Http>, user_id: &str) -> Result<Response<Body>, SurrealErr> {
+pub async fn get_user_by_id(db: &Surreal<Http>, user_id: &str) -> Result<Response<Full<Bytes>>, SurrealErr> {
     // 'users:{}'. Could also store ID differently
     let record_id = format!("users:{}", user_id);
 
@@ -125,12 +125,12 @@ pub async fn get_user_by_id(db: &Surreal<Http>, user_id: &str) -> Result<Respons
             let body = serde_json::to_string(&u).unwrap();
             Ok(Response::builder()
                 .header("Content-Type", "application/json")
-                .body(Body::from(body))
+                .body(Full::from(Bytes::from(body)))
                 .unwrap())
         }
         None => Ok(Response::builder()
             .status(StatusCode::NOT_FOUND)
-            .body(Body::from(r#"{"error":"User not found"}"#))
+            .body(Full::from(Bytes::from(r#"{"error":"User not found"}"#)))
             .unwrap()),
     }
 }
@@ -138,7 +138,7 @@ pub async fn get_user_by_id(db: &Surreal<Http>, user_id: &str) -> Result<Respons
 // ---------------------------
 // POST /api/users
 // ---------------------------
-pub async fn create_user(db: &Surreal<Http>, body_bytes: &[u8]) -> Result<Response<Body>, SurrealErr> {
+pub async fn create_user(db: &Surreal<Http>, body_bytes: &[u8]) -> Result<Response<Full<Bytes>>, SurrealErr> {
     // Convert request body (JSON) into a partial user struct
     let user_in: User = serde_json::from_slice(body_bytes)
         .map_err(|_| SurrealErr::Custom("Invalid JSON body".into()))?;
@@ -151,14 +151,14 @@ pub async fn create_user(db: &Surreal<Http>, body_bytes: &[u8]) -> Result<Respon
     Ok(Response::builder()
         .status(StatusCode::CREATED)
         .header("Content-Type", "application/json")
-        .body(Body::from(body))
+        .body(Full::from(Bytes::from(body)))
         .unwrap())
 }
 
 // ---------------------------
 // PUT /api/users/<id>
 // ---------------------------
-pub async fn update_user(db: &Surreal<Http>, user_id: &str, body_bytes: &[u8]) -> Result<Response<Body>, SurrealErr> {
+pub async fn update_user(db: &Surreal<Http>, user_id: &str, body_bytes: &[u8]) -> Result<Response<Full<Bytes>>, SurrealErr> {
     // Convert request body (JSON) into partial user struct
     let user_in: User = serde_json::from_slice(body_bytes)
         .map_err(|_| SurrealErr::Custom("Invalid JSON body".into()))?;
@@ -173,14 +173,14 @@ pub async fn update_user(db: &Surreal<Http>, user_id: &str, body_bytes: &[u8]) -
             let body = serde_json::to_string(&u).unwrap();
             Ok(Response::builder()
                 .header("Content-Type", "application/json")
-                .body(Body::from(body))
+                .body(Full::from(Bytes::from(body)))
                 .unwrap())
         }
         None => {
             // Surreal might return None if not found
             Ok(Response::builder()
                 .status(StatusCode::NOT_FOUND)
-                .body(Body::from(r#"{"error":"User not found"}"#))
+                .body(Full::from(Bytes::from(r#"{"error":"Not found"}"#)))
                 .unwrap())
         }
     }
@@ -189,7 +189,7 @@ pub async fn update_user(db: &Surreal<Http>, user_id: &str, body_bytes: &[u8]) -
 // ---------------------------
 // DELETE /api/users/<id>
 // ---------------------------
-pub async fn delete_user(db: &Surreal<Http>, user_id: &str) -> Result<Response<Body>, SurrealErr> {
+pub async fn delete_user(db: &Surreal<Http>, user_id: &str) -> Result<Response<Full<Bytes>>, SurrealErr> {
     let record_id = format!("users:{}", user_id);
 
     let deleted: Option<User> = db.delete(&record_id).await?;
@@ -198,13 +198,13 @@ pub async fn delete_user(db: &Surreal<Http>, user_id: &str) -> Result<Response<B
         Some(_u) => {
             Ok(Response::builder()
                 .status(StatusCode::NO_CONTENT) // Typically no body for DELETE
-                .body(Body::empty())
+                .body(Full::from(Bytes::from("")))
                 .unwrap())
         }
         None => {
             Ok(Response::builder()
                 .status(StatusCode::NOT_FOUND)
-                .body(Body::from(r#"{"error":"User not found"}"#))
+                .body(Full::from(Bytes::from(r#"{"error":"Not found"}"#)))
                 .unwrap())
         }
     }
