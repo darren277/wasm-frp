@@ -218,10 +218,7 @@ pub async fn api_handler(req: Request<Incoming>) -> Result<Response<Incoming>, I
             )
         }
         (Method::POST, "/api/users") => {
-            /*
-            let user: User = db.insert("users").content(Data {name: "Joe", email: "joe@gmail.com"}).await?;
-            dbg!(people);
-            */
+            let body = Bytes::from(req.into_body().data().await.unwrap().unwrap());
 
             let body = hyper::body::to_bytes(req.into_body()).await.unwrap();
             let user: User = match serde_json::from_slice(&body) {
