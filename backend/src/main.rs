@@ -220,7 +220,6 @@ pub async fn api_handler(req: Request<Incoming>) -> Result<Response<Incoming>, I
         (Method::POST, "/api/users") => {
             let body = Bytes::from(req.into_body().data().await.unwrap().unwrap());
 
-            let body = hyper::body::to_bytes(req.into_body()).await.unwrap();
             let user: User = match serde_json::from_slice(&body) {
                 Ok(user) => user,
                 Err(e) => {
