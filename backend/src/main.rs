@@ -5,7 +5,7 @@ use hyper::body::Bytes;
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
 use serde::{Deserialize, Serialize};
-use surrealdb::Surreal;
+use surrealdb::{Surreal, engine::any::Any};
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use tokio::net::TcpListener;
@@ -13,7 +13,6 @@ use std::convert::Infallible;
 use std::net::SocketAddr;
 use tokio::time::{timeout, Duration};
 
-use surrealdb::engine::remote::http::Http;
 use surrealdb::engine::any::connect;
 use surrealdb::opt::auth::Root;
 
@@ -107,10 +106,10 @@ fn get_mime_type(path: &str) -> &'static str {
     }
 }
 
-async fn db_connect() -> Result<Surreal<Http>, Response<Full<Bytes>>> {
+async fn db_connect() -> Result<Surreal<Any>, Response<Full<Bytes>>> {
     println!("Connecting to the database...");
     
-    let db = match connect(format!(
+    let db: Surreal<Any> = match connect(format!(
         "http://{}:{}/rpc", 
         SURREALDB_DOCKER_HOST, 
         SURREALDB_INTERNAL_DOCKER_PORT
@@ -120,8 +119,6 @@ async fn db_connect() -> Result<Surreal<Http>, Response<Full<Bytes>>> {
         Ok(db) => db,
         Err(e) => {
             eprintln!("Error connecting to the database: {:?}", e);
-
-            // Notice we now return Err(...) not Ok(...)
             return Err(
                 Response::builder()
                     .status(500)
