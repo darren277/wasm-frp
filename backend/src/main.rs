@@ -8,6 +8,7 @@ use hyper::{Method, Request, Response};
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
 use serde::{Deserialize, Serialize};
+use surrealdb::engine::remote::http::Http;
 use surrealdb::{Surreal, engine::any::Any};
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
@@ -113,7 +114,7 @@ fn get_mime_type(path: &str) -> &'static str {
 // ---------------------------
 // GET /api/users/<id>
 // ---------------------------
-pub async fn get_user_by_id(db: &Surreal<Http>, user_id: &str) -> Result<Response<Full<Bytes>>, SurrealErr> {
+pub async fn get_user_by_id(db: &Surreal<Any>, user_id: &str) -> Result<Response<Full<Bytes>>, SurrealErr> {
     // 'users:{}'. Could also store ID differently
     let record_id = format!("users:{}", user_id);
 
@@ -138,7 +139,7 @@ pub async fn get_user_by_id(db: &Surreal<Http>, user_id: &str) -> Result<Respons
 // ---------------------------
 // POST /api/users
 // ---------------------------
-pub async fn create_user(db: &Surreal<Http>, body_bytes: &[u8]) -> Result<Response<Full<Bytes>>, SurrealErr> {
+pub async fn create_user(db: &Surreal<Any>, body_bytes: &[u8]) -> Result<Response<Full<Bytes>>, SurrealErr> {
     // Convert request body (JSON) into a partial user struct
     let user_in: User = serde_json::from_slice(body_bytes)
         .map_err(|_| SurrealErr::Custom("Invalid JSON body".into()))?;
@@ -158,7 +159,7 @@ pub async fn create_user(db: &Surreal<Http>, body_bytes: &[u8]) -> Result<Respon
 // ---------------------------
 // PUT /api/users/<id>
 // ---------------------------
-pub async fn update_user(db: &Surreal<Http>, user_id: &str, body_bytes: &[u8]) -> Result<Response<Full<Bytes>>, SurrealErr> {
+pub async fn update_user(db: &Surreal<Any>, user_id: &str, body_bytes: &[u8]) -> Result<Response<Full<Bytes>>, SurrealErr> {
     // Convert request body (JSON) into partial user struct
     let user_in: User = serde_json::from_slice(body_bytes)
         .map_err(|_| SurrealErr::Custom("Invalid JSON body".into()))?;
@@ -189,7 +190,7 @@ pub async fn update_user(db: &Surreal<Http>, user_id: &str, body_bytes: &[u8]) -
 // ---------------------------
 // DELETE /api/users/<id>
 // ---------------------------
-pub async fn delete_user(db: &Surreal<Http>, user_id: &str) -> Result<Response<Full<Bytes>>, SurrealErr> {
+pub async fn delete_user(db: &Surreal<Any>, user_id: &str) -> Result<Response<Full<Bytes>>, SurrealErr> {
     let record_id = format!("users:{}", user_id);
 
     let deleted: Option<User> = db.delete(&record_id).await?;
