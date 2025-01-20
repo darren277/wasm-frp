@@ -30,7 +30,7 @@ const SURREALDB_PASS: &str = "root";
 
 const PORT: u16 = 8080;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct User {
     name: String,
     email: String,
@@ -111,6 +111,13 @@ fn get_mime_type(path: &str) -> &'static str {
     }
 }
 
+// custom definition of SurrealErr...
+#[derive(Debug)]
+pub enum SurrealErr {
+    Surreal(surrealdb::Error),
+    Custom(String),
+}
+
 // ---------------------------
 // GET /api/users/<id>
 // ---------------------------
@@ -119,7 +126,7 @@ pub async fn get_user_by_id(db: &Surreal<Any>, user_id: &str) -> Result<Response
     let record_id = format!("users:{}", user_id);
 
     // SurrealDB returns an Option-like Vec (0 or 1) for select
-    let user: Option<User> = db.select(&record_id).await?;
+    let user: Option<User> = db.select(&record_id).await.map_err(SurrealErr::Surreal)?.into_iter().next();
 
     match user {
         Some(u) => {
@@ -146,7 +153,10 @@ pub async fn create_user(db: &Surreal<Any>, body_bytes: &[u8]) -> Result<Respons
 
     // Insert into SurrealDB; "users" can be a table or root-level
     let record_id = "users"; 
-    let created: User = db.create(record_id).content(&user_in).await?;
+    let created: User = match db.create(record_id).content(user_in.clone()).await.map_err(SurrealErr::Surreal)? {
+        Some(user) => user,
+        None => return Err(SurrealErr::Custom("Failed to create user".into())),
+    };
 
     let body = serde_json::to_string(&created).unwrap();
     Ok(Response::builder()
@@ -167,7 +177,7 @@ pub async fn update_user(db: &Surreal<Any>, user_id: &str, body_bytes: &[u8]) ->
     let record_id = format!("users:{}", user_id);
 
     // Update the record
-    let updated: Option<User> = db.update(&record_id).content(&user_in).await?;
+    let updated: Option<User> = db.update(&record_id).content(user_in.clone()).await.map_err(SurrealErr::Surreal)?.into_iter().next();
 
     match updated {
         Some(u) => {
@@ -193,7 +203,7 @@ pub async fn update_user(db: &Surreal<Any>, user_id: &str, body_bytes: &[u8]) ->
 pub async fn delete_user(db: &Surreal<Any>, user_id: &str) -> Result<Response<Full<Bytes>>, SurrealErr> {
     let record_id = format!("users:{}", user_id);
 
-    let deleted: Option<User> = db.delete(&record_id).await?;
+    let deleted: Option<User> = db.delete(&record_id).await.map_err(SurrealErr::Surreal)?.into_iter().next();
 
     match deleted {
         Some(_u) => {
