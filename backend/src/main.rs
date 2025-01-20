@@ -456,6 +456,10 @@ pub async fn api_handler(req: Request<Incoming>) -> Result<Response<Full<Bytes>>
                         }
                     }
                 }
+                _ => {
+                    eprintln!("Unsupported HTTP method: {:?}", method);
+                    return Ok(not_found());
+                }
             }
         }
         //Ok(Response::builder().status(404).body(Full::new(Bytes::from("404 - Not Found"))).unwrap())
