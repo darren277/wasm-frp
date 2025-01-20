@@ -1,7 +1,8 @@
 use http_body_util::Full;
 use hyper::server::conn::http1;
 use hyper::body::Bytes;
-use hyper::{Body, Method, Request, Response};
+use hyper::body::Incoming;
+use hyper::{Method, Request, Response};
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
 use serde::{Deserialize, Serialize};
@@ -181,7 +182,7 @@ async fn db_connect() -> Result<Surreal<Any>, Response<Full<Bytes>>> {
     Ok(db)
 }
 
-pub async fn api_handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+pub async fn api_handler(req: Request<Incoming>) -> Result<Response<Incoming>, Infallible> {
     let path = req.uri().path().to_string();
     let method = req.method().clone();
 
