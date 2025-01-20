@@ -182,7 +182,7 @@ async fn db_connect() -> Result<Surreal<Any>, Response<Full<Bytes>>> {
     Ok(db)
 }
 
-pub async fn api_handler(req: Request<Incoming>) -> Result<Response<Incoming>, Infallible> {
+pub async fn api_handler(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {
     let path = req.uri().path().to_string();
     let method = req.method().clone();
 
