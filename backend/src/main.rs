@@ -240,7 +240,7 @@ pub async fn api_handler(req: Request<Body>) -> Result<Response<Body>, Infallibl
                 Ok(_) => {
                     println!("Data inserted successfully");
                     Ok(Response::builder()
-                        .status(201)
+                        .status(200)
                         .header("Content-Type", "application/json")
                         .body(Full::new(Bytes::from(r#"{"message": "User inserted successfully"}"#)))
                         .unwrap()
