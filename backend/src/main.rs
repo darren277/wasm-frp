@@ -1,7 +1,7 @@
 use http_body_util::Full;
 use hyper::server::conn::http1;
-use hyper::{Request, Response};
 use hyper::body::Bytes;
+use hyper::{Body, Method, Request, Response};
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
 use serde::{Deserialize, Serialize};
@@ -29,6 +29,7 @@ const PORT: u16 = 8080;
 #[derive(Serialize, Deserialize, Debug)]
 struct User {
     name: String,
+    email: String,
 }
 
 #[tokio::main]
@@ -59,7 +60,7 @@ async fn serve_static_files(req: Request<hyper::body::Incoming>) -> Result<Respo
     println!("Serving file for path: {}", path);
 
     if path.starts_with("/api") {
-        return api_handler(path).await;
+        return api_handler(req).await;
     }
 
     let file_path = match path {
@@ -180,18 +181,21 @@ async fn db_connect() -> Result<Surreal<Any>, Response<Full<Bytes>>> {
     Ok(db)
 }
 
-async fn api_handler(path: &str) -> Result<Response<Full<Bytes>>, Infallible> {
-    match path {
-        "/api/users" => {
-            let db = match db_connect().await {
-                Ok(db) => db,
-                Err(error_response) => {
-                    // If db_connect returned Err(...), 
-                    // that Err(...) is an HTTP response we want to send back
-                    return Ok(error_response);
-                }
-            };            
+pub async fn api_handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    let path = req.uri().path().to_string();
+    let method = req.method().clone();
 
+    let db = match db_connect().await {
+        Ok(db) => db,
+        Err(error_response) => {
+            // If db_connect returned Err(...), 
+            // that Err(...) is an HTTP response we want to send back
+            return Ok(error_response);
+        }
+    };
+    
+    match (method, path.as_str()) {
+        (Method::GET, "/api/users") => {
             println!("Fetching data from the database...");
             let users: Vec<User> = match db.select("users").await {
                 Ok(users) => users,
@@ -211,6 +215,47 @@ async fn api_handler(path: &str) -> Result<Response<Full<Bytes>>, Infallible> {
                 .body(Full::new(Bytes::from(serde_json::to_string(&users).unwrap())))
                 .unwrap()
             )
+        }
+        (Method::POST, "/api/users") => {
+            /*
+            let user: User = db.insert("users").content(Data {name: "Joe", email: "joe@gmail.com"}).await?;
+            dbg!(people);
+            */
+
+            let body = hyper::body::to_bytes(req.into_body()).await.unwrap();
+            let user: User = match serde_json::from_slice(&body) {
+                Ok(user) => user,
+                Err(e) => {
+                    eprintln!("Error deserializing user data: {:?}", e);
+                    return Ok(Response::builder()
+                        .status(400)
+                        .header("Content-Type", "application/json")
+                        .body(Full::new(Bytes::from(r#"{"error": "Failed to deserialize user data"}"#)))
+                        .unwrap());
+                }
+            };
+
+            println!("Inserting data into the database...");
+            match db.insert("users").content(user).await {
+                Ok(_) => {
+                    println!("Data inserted successfully");
+                    Ok(Response::builder()
+                        .status(201)
+                        .header("Content-Type", "application/json")
+                        .body(Full::new(Bytes::from(r#"{"message": "User inserted successfully"}"#)))
+                        .unwrap()
+                    )
+                }
+                Err(e) => {
+                    eprintln!("Error inserting data into the database: {:?}", e);
+                    Ok(Response::builder()
+                        .status(500)
+                        .header("Content-Type", "application/json")
+                        .body(Full::new(Bytes::from(r#"{"error": "Failed to insert data into database"}"#)))
+                        .unwrap()
+                    )
+                }
+            }
         }
         _ => {
             Ok(Response::builder()
