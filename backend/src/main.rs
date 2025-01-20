@@ -8,7 +8,6 @@ use hyper::{Method, Request, Response};
 use hyper::service::service_fn;
 use hyper_util::rt::TokioIo;
 use serde::{Deserialize, Serialize};
-use surrealdb::engine::remote::http::Http;
 use surrealdb::{Surreal, engine::any::Any};
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
