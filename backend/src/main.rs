@@ -1,4 +1,5 @@
 use http_body_util::Full;
+use http_body_util::BodyExt;
 use hyper::server::conn::http1;
 use hyper::body::Bytes;
 use hyper::body::Incoming;
@@ -218,7 +219,25 @@ pub async fn api_handler(req: Request<Incoming>) -> Result<Response<Full<Bytes>>
             )
         }
         (Method::POST, "/api/users") => {
-            let body = Bytes::from(req.into_body().data().await.unwrap().unwrap());
+            let body_stream = req.into_body();
+
+            // Collect the entire body into a "Full" type:
+            let collected_body = match body_stream.collect().await {
+                Ok(full) => full,
+                Err(e) => {
+                    eprintln!("Error reading body: {e}");
+                    // return error response...
+                    return Ok(Response::builder()
+                        .status(500)
+                        .header("Content-Type", "application/json")
+                        .body(Full::new(Bytes::from(r#"{"error": "Failed to read body"}"#)))
+                        .unwrap());
+                }
+            };
+
+            // Convert that to Bytes:
+            let body: Bytes = collected_body.to_bytes();
+            println!("Got body: {:?}", body);
 
             let user: User = match serde_json::from_slice(&body) {
                 Ok(user) => user,
