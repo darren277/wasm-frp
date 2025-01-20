@@ -313,6 +313,7 @@ async fn db_connect() -> Result<Surreal<Any>, Response<Full<Bytes>>> {
 pub async fn api_handler(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {
     let path = req.uri().path().to_string();
     let method = req.method().clone();
+    let method_clone = method.clone();
 
     let db = match db_connect().await {
         Ok(db) => db,
@@ -404,8 +405,7 @@ pub async fn api_handler(req: Request<Incoming>) -> Result<Response<Full<Bytes>>
         }
         _ if path.starts_with("/api/users/") => {
             let user_id = path.trim_start_matches("/api/users/"); // "123"
-            
-            match method {
+            match method_clone {
                 Method::GET => {
                     match get_user_by_id(&db, user_id).await {
                         Ok(response) => Ok(response),
@@ -457,7 +457,7 @@ pub async fn api_handler(req: Request<Incoming>) -> Result<Response<Full<Bytes>>
                     }
                 }
                 _ => {
-                    eprintln!("Unsupported HTTP method: {:?}", method);
+                    eprintln!("Unsupported HTTP method: {:?}", method_clone);
                     return Ok(not_found());
                 }
             }
