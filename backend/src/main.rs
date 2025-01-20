@@ -252,7 +252,7 @@ pub async fn api_handler(req: Request<Incoming>) -> Result<Response<Full<Bytes>>
             };
 
             println!("Inserting data into the database...");
-            match db.insert("users").content(user).await {
+            match db.insert::<Vec<User>>("users").content(vec![user]).await {
                 Ok(_) => {
                     println!("Data inserted successfully");
                     Ok(Response::builder()
