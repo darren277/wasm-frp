@@ -1,5 +1,9 @@
 # How to Build and Run
 
+## About
+
+This is a Rust only full stack application, with the backend written in Rust, a WebAssembly Rust front end (Yew), and even uses SurrealDB (written in Rust) for multimodel data storage.
+
 ## Docker
 
 docker-compose build
