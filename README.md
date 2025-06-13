@@ -6,17 +6,17 @@ This is a Rust only full stack application, with the backend written in Rust, a 
 
 ## Docker
 
-docker-compose build
-docker-compose up
+1. `docker-compose build`.
+2. `docker-compose up`.
 
 ## How to run locally
 
 ### Frontend
 
 From `frontend` directory:
-0. `cargo install wasm-pack` and `cargo install simple-http-server` first.
-1. `make build`.
-2. `make copy`.
+1. `cargo install wasm-pack` and `cargo install simple-http-server` first.
+2. `make build`.
+3. `make copy`.
 
 ### Backend
 
