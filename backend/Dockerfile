@@ -1,9 +1,16 @@
 FROM rust:1.81 as builder
+
+# Install nightly toolchain
+RUN rustup install nightly && rustup default nightly
+
 WORKDIR /usr/src/myapp
 
 COPY ./Cargo.toml ./Cargo.toml
 
 COPY ./src ./src
+
+# Use nightly to build the project
+RUN cargo +nightly install --path .
 
 RUN cargo install --path .
 
