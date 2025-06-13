@@ -19,3 +19,9 @@ From `frontend` directory:
 From `backend` directory:
 1. `cargo build`.
 2. `cargo run`.
+
+# Tasks
+
+- [ ] IDEA: Integrate with SurrealDB.
+- [ ] ADD UNIT TESTS...
+
