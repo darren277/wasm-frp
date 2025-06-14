@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: wasmfrp-frontend, namespace: {{ .Values.namespace }} }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: wasmfrp-frontend } }
+  template:
+    metadata: { labels: { app: wasmfrp-frontend } }
+    spec:
+      imagePullSecrets:
+        - name: ecr-secret
+      containers:
+        - name: web
+          image: "{{ .Values.wasmfrp.frontend.image.repository }}:{{ .Values.wasmfrp.frontend.image.tag }}"
+          imagePullPolicy: "{{ .Values.wasmfrp.frontend.image.pullPolicy }}"
+          ports: [ { containerPort: 80 } ]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: wasmfrp-frontend, namespace: {{ .Values.namespace }} }
+spec:
+  selector: { app: wasmfrp-frontend }
+  ports: [ { port: 80, targetPort: 80 } ]
