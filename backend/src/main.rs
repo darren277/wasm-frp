@@ -32,6 +32,26 @@ const SURREALDB_PASS: &str = "root";
 
 const PORT: u16 = 8080;
 
+lazy_static! {
+    static ref REQUEST_COUNT: Counter = register_counter!(
+        "http_requests_total",
+        "Total number of HTTP requests"
+    ).unwrap();
+}
+
+async fn metrics_handler(_req: Request<Incoming>) -> Result<Response<Full<Bytes>>, hyper::Error> {
+    let encoder = TextEncoder::new();
+    let metric_families = prometheus::gather();
+    let mut buffer = Vec::new();
+    encoder.encode(&metric_families, &mut buffer).unwrap();
+
+    Ok(Response::builder()
+        .status(200)
+        .header("Content-Type", encoder.format_type())
+        .body(Full::from(Bytes::from(buffer)))
+        .unwrap())
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct User {
     name: String,
@@ -317,6 +337,8 @@ pub async fn api_handler(req: Request<Incoming>) -> Result<Response<Full<Bytes>>
     let method = req.method().clone();
     let method_clone = method.clone();
 
+    REQUEST_COUNT.inc();
+
     let db = match db_connect().await {
         Ok(db) => db,
         Err(error_response) => {
@@ -327,6 +349,18 @@ pub async fn api_handler(req: Request<Incoming>) -> Result<Response<Full<Bytes>>
     };
     
     match (method, path.as_str()) {
+        (Method::GET, "/api/metrics") => {
+            println!("Metrics endpoint hit");
+            match metrics_handler(req).await {
+                Ok(response) => {
+                    Ok(response)
+                }
+                Err(e) => {
+                    eprintln!("Error handling metrics request: {:?}", e);
+                    Ok(internal_server_error())
+                }
+            }
+        }
         (Method::GET, "/api/users") => {
             println!("Fetching data from the database...");
             let users: Vec<User> = match db.select("users").await {
