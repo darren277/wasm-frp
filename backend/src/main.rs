@@ -16,6 +16,9 @@ use std::convert::Infallible;
 use std::net::SocketAddr;
 use tokio::time::{timeout, Duration};
 
+use prometheus::{Encoder, TextEncoder, register_counter, Counter};
+use lazy_static::lazy_static;
+
 use surrealdb::engine::any::connect;
 use surrealdb::opt::auth::Root;
 
