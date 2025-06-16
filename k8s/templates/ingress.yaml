@@ -14,15 +14,9 @@ spec:
     - host: {{ .Values.ingressName }}.{{ .Values.namespace }}.com
       http:
         paths:
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: wasmfrp-backend
-                port: { number: 80 }
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: wasmfrp-frontend
+                name: wasmfrp
                 port: { number: 80 }

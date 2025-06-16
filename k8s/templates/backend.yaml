@@ -1,13 +1,13 @@
 apiVersion: apps/v1
 kind: Deployment
-metadata: { name: wasrmfrp-backend, namespace: {{ .Values.namespace }} }
+metadata: { name: wasrmfrp, namespace: {{ .Values.namespace }} }
 spec:
   replicas: 2
-  selector: { matchLabels: { app: wasmfrp-backend } }
+  selector: { matchLabels: { app: wasmfrp } }
   template:
     metadata:
       labels:
-        app: wasmfrp-backend
+        app: wasmfrp
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/path: /metrics
@@ -17,8 +17,8 @@ spec:
         - name: ecr-secret
       containers:
         - name: api
-          image: "{{ .Values.wasmfrp.backend.image.repository }}:{{ .Values.wasmfrp.backend.image.tag }}"
-          imagePullPolicy: "{{ .Values.wasmfrp.backend.image.pullPolicy }}"
+          image: "{{ .Values.wasmfrp.image.repository }}:{{ .Values.wasmfrp.image.tag }}"
+          imagePullPolicy: "{{ .Values.wasmfrp.image.pullPolicy }}"
           env:
             - name: DATABASE_URL
               value: http://surrealdb:8000
@@ -30,7 +30,7 @@ spec:
 ---
 apiVersion: v1
 kind: Service
-metadata: { name: wasmfrp-backend, namespace: {{ .Values.namespace }} }
+metadata: { name: wasmfrp, namespace: {{ .Values.namespace }} }
 spec:
-  selector: { app: wasmfrp-backend }
+  selector: { app: wasmfrp }
   ports: [ { port: 80, targetPort: 5000 } ]

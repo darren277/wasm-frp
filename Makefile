@@ -14,17 +14,16 @@ help:
 auth:
 	aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $(DOCKER_REGISTRY)
 
-create-repos:
-	aws ecr create-repository --repository-name $(BACKEND_IMAGE) --region us-east-1 || true
-	aws ecr create-repository --repository-name $(FRONTEND_IMAGE) --region us-east-1 || true
+create-repo:
+	aws ecr create-repository --repository-name $(IMAGE) --region us-east-1 || true
 
-docker-backend:
-	docker build -t $(DOCKER_REGISTRY)/$(BACKEND_IMAGE):$(BACKEND_VERSION) -f ./backend/Dockerfile .
-	docker push $(DOCKER_REGISTRY)/$(BACKEND_IMAGE):$(BACKEND_VERSION)
+docker-prepare:
+	cd frontend && cargo build --target wasm32-unknown-unknown
+	cp frontend/pkg/* backend/static/pkg/
 
-docker-frontend:
-	docker build -t $(DOCKER_REGISTRY)/$(FRONTEND_IMAGE):$(FRONTEND_VERSION) -f ./frontend/Dockerfile .
-	docker push $(DOCKER_REGISTRY)/$(FRONTEND_IMAGE):$(FRONTEND_VERSION)
+docker: docker-prepare
+	docker build -t $(DOCKER_REGISTRY)/$(IMAGE):$(VERSION) -f ./backend/Dockerfile ./backend
+	docker push $(DOCKER_REGISTRY)/$(IMAGE):$(VERSION)
 
 
 # Kubernetes and Helm

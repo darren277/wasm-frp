@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: wasmfrp_backend-metrics
+  name: wasmfrp-metrics
   namespace: {{ .Values.namespace }}
   labels:
-    app: wasmfrp_backend
+    app: wasmfrp
     release: k8s-monitoring  # important: matches Prometheus release label
 spec:
   selector:
-    app: wasmfrp_backend  # must match the Deployment's pod label
+    app: wasmfrp  # must match the Deployment's pod label
   ports:
     - name: metrics
       port: 5000
@@ -17,14 +17,14 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: wasmfrp_backend-monitor
+  name: wasmfrp-monitor
   namespace: {{ .Values.namespace }}
   labels:
     release: k8s-monitoring
 spec:
   selector:
     matchLabels:
-      app: wasmfrp_backend
+      app: wasmfrp
   namespaceSelector:
     matchNames:
       - {{ .Values.namespace }}
